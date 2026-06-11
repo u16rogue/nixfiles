@@ -1,0 +1,8 @@
+**
+.*
+!.gitignore
+!default.nix
+!dev/
+!dev/**
+!dev-cpp/
+!dev-cpp/**

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# TODO: assert lockfiles are in sync pragmatically
+
+FLAG_FAIL=0
+PROJECT_DIR="$(realpath "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/..")"
+
+if [[ ! -f "$PROJECT_DIR/templates/default.nix" ]]; then
+    echo "[err] assert failed for template dir where no default.nix not found." >&2
+    exit 1
+fi
+
+compare_diff() {
+}
+
+compare_diff \
+    "$PROJECT_DIR/.devshellshook.sh" \
+    "$PROJECT_DIR/templates/dev/.devshellshook.sh" \
+    "$PROJECT_DIR/templates/dev-cpp/.devshellshook.sh"
+
+compare_diff \
+    "$PROJECT_DIR/.devshellspkgs.ls" \
+    "$PROJECT_DIR/templates/dev/.devshellspkgs.ls" \
+    "$PROJECT_DIR/templates/dev-cpp/.devshellspkgs.ls"
+
+compare_diff \
+    "$PROJECT_DIR/.zellij.kdl" \
+    "$PROJECT_DIR/templates/dev/.zellij.kdl" \
+    "$PROJECT_DIR/templates/dev-cpp/.zellij.kdl"
+
+compare_diff \
+    "$PROJECT_DIR/templates/dev/flake.lock" \
+    "$PROJECT_DIR/templates/dev-cpp/flake.lock"
+
+if [[ "$FLAG_FAIL" != "0" ]]; then
+    exit 1
+fi
