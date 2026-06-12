@@ -6,8 +6,13 @@
     };
 
     outputs = inputs@{ self, nixpkgs, ... }: inputs.flake-parts.lib.mkFlake { inherit inputs; } ({ config, ... }: {
-        flake.description = "nix stuff";
+        flake = {
+            description = "nix stuff";
+            templates = import ./templates/default.nix { inherit nixpkgs; };
+        };
+
         imports = [];
+
         systems = [ "x86_64-linux" ];
         perSystem = { self', config, pkgs, ... }: {
             devShells.default = pkgs.mkShellNoCC {

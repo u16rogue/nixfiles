@@ -3,6 +3,8 @@
 # TODO: assert lockfiles are in sync pragmatically
 
 FLAG_FAIL=0
+COUNT_SAME=0
+COUNT_DIFF=0
 PROJECT_DIR="$(realpath "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/..")"
 
 if [[ ! -f "$PROJECT_DIR/templates/default.nix" ]]; then
@@ -11,6 +13,43 @@ if [[ ! -f "$PROJECT_DIR/templates/default.nix" ]]; then
 fi
 
 compare_diff() {
+    local first_path="$1"
+    local current_path=
+    local same_count=0
+    local diff_count=0
+
+    if [[ "$#" -lt 2 ]]; then
+        echo "[err] compare_diff needs at least two paths." >&2
+        FLAG_FAIL=1
+        return
+    fi
+
+    if [[ ! -f "$first_path" ]]; then
+        echo "[diff] $first_path is missing."
+    fi
+
+    shift
+    for current_path in "$@"; do
+        if [[ ! -f "$current_path" ]]; then
+            echo "[diff] $current_path is missing."
+            diff_count=$((diff_count + 1))
+        elif [[ ! -f "$first_path" ]]; then
+            echo "[diff] $current_path cannot be compared because $first_path is missing."
+            diff_count=$((diff_count + 1))
+        elif cmp -s "$first_path" "$current_path"; then
+            same_count=$((same_count + 1))
+        else
+            echo "[diff] $first_path != $current_path"
+            diff_count=$((diff_count + 1))
+        fi
+    done
+
+    COUNT_SAME=$((COUNT_SAME + same_count))
+    COUNT_DIFF=$((COUNT_DIFF + diff_count))
+
+    if [[ "$diff_count" != "0" ]]; then
+        FLAG_FAIL=1
+    fi
 }
 
 compare_diff \
@@ -31,6 +70,8 @@ compare_diff \
 compare_diff \
     "$PROJECT_DIR/templates/dev/flake.lock" \
     "$PROJECT_DIR/templates/dev-cpp/flake.lock"
+
+echo "[info] final result: $COUNT_SAME same, $COUNT_DIFF different"
 
 if [[ "$FLAG_FAIL" != "0" ]]; then
     exit 1
