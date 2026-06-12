@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
 
-# TODO: find work around to nix daemon socket
-#       without the socket nix will use its own "root"
-#       located at ~/.local/share/nix which causes multiple
-#       duplicates. this is solved by mounting the nix daemon socket
-#       and allowing the sandboxed nix to install packages in the
-#       host /nix/store which may or may not be a point of failure.
-
 assert_command() {
     if ! command -v "$1" &> /dev/null; then
        echo "[error] '$1' not available." >&2
@@ -115,12 +108,39 @@ BWRAP_ARGS+=( \
 
 # Setup fs
 BWRAP_ARGS+=( \
-    --dev /dev              \
-    --proc /proc            \
-    --tmpfs /tmp            \
-    --ro-bind /lib64 /lib64 \
-    --ro-bind /nix /nix     \
+    --dev /dev                      \
+    --proc /proc                    \
+    --tmpfs /tmp                    \
+    --dir /nix                      \
+    --ro-bind /lib64 /lib64         \
+    --ro-bind /nix/store /nix/store \
 )
+
+# Setup optional packages
+EXTRA_PACKAGES=()
+if [[ -f "$PWD/.devshellspkgs.ls" ]]; then
+    while IFS= read -r package; do
+        [[ "$package" =~ ^[[:space:]]*# ]] && continue
+
+        if [[ "$package" =~ ^[[:space:]]*- ]]; then
+            echo "[error] optional package cannot start with '-': '$package'" >&2
+            exit 1
+        fi
+
+        if [[ "$package" =~ [^[:space:]] ]]; then
+            EXTRA_PACKAGES+=("$package")
+        fi
+    done < "$PWD/.devshellspkgs.ls"
+fi
+
+if [[ ${#EXTRA_PACKAGES[@]} -gt 0 ]]; then
+    if ! OPTIONAL_PATH="$(nix --extra-experimental-features "flakes" --extra-experimental-features "nix-command" shell --inputs-from . "${EXTRA_PACKAGES[@]}" --command /bin/sh -c 'printf "%s" "$PATH"')"; then
+        echo "[error] failed to setup optional packages" >&2
+        exit 1
+    fi
+
+    PATH="$OPTIONAL_PATH"
+fi
 
 # Setup PATH
 BWRAP_ARGS+=( \
@@ -166,13 +186,13 @@ fi
 BWRAP_ARGS+=(--ro-bind "$EMU_GROUP" /etc/group)
 
 # Setup devshell and ensure it cant be changed inside the sandbox
-#BWRAP_ARGS+=( \
-#    --ro-bind "$PWD/flake.nix" "$PWD/flake.nix"                 \
-#    --ro-bind "$PWD/flake.lock" "$PWD/flake.lock"               \
-#    --ro-bind "$PWD/.devshellshook.sh" "$PWD/.devshellshook.sh" \
-#    --ro-bind "$PWD/.devshellspkgs.ls" "$PWD/.devshellspkgs.ls" \
-#    --ro-bind "$PWD/.zellij.kdl" "$PWD/.zellij.kdl" \
-#)
+BWRAP_ARGS+=( \
+    --ro-bind "$PWD/flake.nix" "$PWD/flake.nix"                 \
+    --ro-bind "$PWD/flake.lock" "$PWD/flake.lock"               \
+    --ro-bind "$PWD/.devshellshook.sh" "$PWD/.devshellshook.sh" \
+    --ro-bind "$PWD/.devshellspkgs.ls" "$PWD/.devshellspkgs.ls" \
+    --ro-bind "$PWD/.zellij.kdl" "$PWD/.zellij.kdl" \
+)
 
 # Setup development and nix env's
 while IFS='=' read -r key value; do
@@ -217,23 +237,6 @@ fi
 # ====================================================================================================
 
 BWRAP_ARGS+=("--")
-
-EXTRA_PACKAGES=()
-if [[ -f "$PWD/.devshellspkgs.ls" ]]; then
-    while IFS= read -r package; do
-        [[ "$package" =~ ^[[:space:]]*# ]] && continue
-
-        if [[ "$package" =~ [^[:space:]] ]]; then
-            EXTRA_PACKAGES+=("$package")
-        fi
-    done < "$PWD/.devshellspkgs.ls"
-fi
-
-if [[ ${#EXTRA_PACKAGES[@]} -gt 0 ]]; then
-    BWRAP_ARGS+=( \
-        nix --extra-experimental-features "flakes" --extra-experimental-features "nix-command" shell --inputs-from . "${EXTRA_PACKAGES[@]}" --command \
-    )
-fi
 
 BWRAP_ARGS+=( \
     "$PROGRAM" \

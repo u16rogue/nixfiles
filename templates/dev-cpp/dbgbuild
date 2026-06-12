@@ -28,15 +28,11 @@ if [[ ! -f "$SOURCE_DIR/CMakeLists.txt" ]]; then
 fi
 
 if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
-    if ! CC=clang CXX=clang++ cmake "$SOURCE_DIR" -G Ninja -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE="$SOURCE_DIR/cmake/x86_64-w64-mingw32.cmake" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON; then
+    if ! CC=clang CXX=clang++ cmake "$SOURCE_DIR" -G Ninja -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON; then
         printerr "cmake generation failed"
         exit 1
     fi
 fi
 
-if ! cmake --build "$BUILD_DIR"; then
-    printerr "build failed"
-    exit 1
-fi
+exec cmake --build "$BUILD_DIR"
 
-exec "$BUILD_DIR/cpp-project" "$@"
