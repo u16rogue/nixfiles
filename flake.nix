@@ -1,12 +1,11 @@
 {
-    description = "A very basic flake";
-
     inputs = {
         nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
         flake-parts.url = "github:hercules-ci/flake-parts";
+        wrappers.url = "github:lassulus/wrappers";
     };
 
-    outputs = inputs@{ self, nixpkgs }: inputs.flake-parts.lib.mkFlake { inherit inputs; } ({ config, ... }: {
+    outputs = inputs@{ self, nixpkgs, ... }: inputs.flake-parts.lib.mkFlake { inherit inputs; } ({ config, ... }: {
         flake.description = "nix stuff";
         imports = [];
         systems = [ "x86_64-linux" ];
