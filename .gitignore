@@ -11,3 +11,6 @@
 !scripts/
 !templates/
 !__tooling__/
+
+!.github
+!.github/**
