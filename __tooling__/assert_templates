@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# TODO: assert lockfiles are in sync pragmatically
+# THIS WAS REWRITTEN BY A CLANKER
+# Original: `${pkgs.git}/bin/git commit --amend --no-edit -S`
 
 FLAG_FAIL=0
 COUNT_SAME=0
@@ -52,6 +53,127 @@ compare_diff() {
     fi
 }
 
+extract_nixpkgs_lock() {
+    local lock_path="$1"
+
+    jq -r '
+        . as $lock
+        | if ($lock.root // null) == null then
+            ["err", "?", "missing .root"]
+          elif ($lock.root | type) != "string" then
+            ["err", "?", "missing root node"]
+          else
+            $lock.root as $root_key
+            | if ($lock.nodes[$root_key] // null) == null then
+                ["err", "?", "missing root node"]
+              elif ($lock.nodes[$root_key].inputs.nixpkgs // null) == null then
+                ["err", "?", "missing root input nixpkgs"]
+              else
+                $lock.nodes[$root_key].inputs.nixpkgs as $input_key
+                | if ($input_key | type) != "string" then
+                    ["err", ($input_key | tostring), "missing selected nixpkgs node"]
+                  elif ($lock.nodes[$input_key] // null) == null then
+                    ["err", $input_key, "missing selected nixpkgs node"]
+                  elif ($lock.nodes[$input_key].locked.rev // null) == null then
+                    ["err", $input_key, "missing selected nixpkgs locked.rev"]
+                  else
+                    ["ok", $input_key, $lock.nodes[$input_key].locked.rev]
+                  end
+              end
+          end
+        | @tsv
+    ' "$lock_path"
+}
+
+compare_lockfile() {
+    local first_path="$1"
+    local current_path=
+    local current_output=
+    local current_status=
+    local current_input=
+    local current_rev=
+    local current_message=
+    local reference_output=
+    local reference_status=
+    local reference_rev=
+    local reference_input=
+    local reference_message=
+    local same_count=0
+    local diff_count=0
+    local err_count=0
+
+    if [[ "$#" -lt 2 ]]; then
+        echo "[err] compare_lockfile needs at least two paths." >&2
+        FLAG_FAIL=1
+        return
+    fi
+
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "[err] jq is required to compare nixpkgs lock entries." >&2
+        COUNT_DIFF=$((COUNT_DIFF + 1))
+        FLAG_FAIL=1
+        return
+    fi
+
+    if [[ ! -f "$first_path" ]]; then
+        echo "[diff] $first_path is missing."
+        diff_count=$((diff_count + 1))
+    elif ! reference_output="$(extract_nixpkgs_lock "$first_path")"; then
+        echo "[err] failed to extract root nixpkgs input from $first_path." >&2
+        err_count=$((err_count + 1))
+    elif [[ -z "$reference_output" ]]; then
+        echo "[err] $first_path has no root nixpkgs input." >&2
+        err_count=$((err_count + 1))
+    else
+        IFS=$'\t' read -r reference_status reference_input reference_rev <<< "$reference_output"
+
+        if [[ "$reference_status" != "ok" ]]; then
+            reference_message="$reference_rev"
+            echo "[err] nixpkgs $first_path#$reference_input $reference_message." >&2
+            err_count=$((err_count + 1))
+        fi
+    fi
+
+    shift
+    for current_path in "$@"; do
+        if [[ ! -f "$current_path" ]]; then
+            echo "[diff] $current_path is missing."
+            diff_count=$((diff_count + 1))
+        elif [[ ! -f "$first_path" ]]; then
+            echo "[diff] $current_path cannot be compared because $first_path is missing."
+            diff_count=$((diff_count + 1))
+        elif ! current_output="$(extract_nixpkgs_lock "$current_path")"; then
+            echo "[err] failed to extract root nixpkgs input from $current_path." >&2
+            err_count=$((err_count + 1))
+        elif [[ -z "$current_output" ]]; then
+            echo "[err] $current_path has no root nixpkgs input." >&2
+            err_count=$((err_count + 1))
+        else
+            IFS=$'\t' read -r current_status current_input current_rev <<< "$current_output"
+
+            if [[ "$current_status" != "ok" ]]; then
+                current_message="$current_rev"
+                echo "[err] nixpkgs $current_path#$current_input $current_message." >&2
+                err_count=$((err_count + 1))
+            elif [[ "$reference_status" != "ok" ]]; then
+                continue
+            elif [[ "$current_rev" == "$reference_rev" ]]; then
+                same_count=$((same_count + 1))
+            else
+                echo "[diff] nixpkgs $current_path#$current_input rev=$current_rev != $first_path#$reference_input rev=$reference_rev"
+                diff_count=$((diff_count + 1))
+            fi
+        fi
+    done
+
+    COUNT_SAME=$((COUNT_SAME + same_count))
+    COUNT_DIFF=$((COUNT_DIFF + diff_count + err_count))
+
+    if [[ "$diff_count" != "0" || "$err_count" != "0" ]]; then
+        FLAG_FAIL=1
+    fi
+}
+
 compare_diff \
     "$PROJECT_DIR/.devshellshook.sh" \
     "$PROJECT_DIR/templates/dev/.devshellshook.sh" \
@@ -67,7 +189,8 @@ compare_diff \
     "$PROJECT_DIR/templates/dev/.zellij.kdl" \
     "$PROJECT_DIR/templates/dev-cpp/.zellij.kdl"
 
-compare_diff \
+compare_lockfile \
+    "$PROJECT_DIR/flake.lock" \
     "$PROJECT_DIR/templates/dev/flake.lock" \
     "$PROJECT_DIR/templates/dev-cpp/flake.lock"
 
