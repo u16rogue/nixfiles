@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# TODO: find work around to nix daemon socket
+#       without the socket nix will use its own "root"
+#       located at ~/.local/share/nix which causes multiple
+#       duplicates. this is solved by mounting the nix daemon socket
+#       and allowing the sandboxed nix to install packages in the
+#       host /nix/store which may or may not be a point of failure.
+
 assert_command() {
     if ! command -v "$1" &> /dev/null; then
        echo "[error] '$1' not available." >&2

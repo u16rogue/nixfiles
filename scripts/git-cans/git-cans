@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-# +----------------------+
-# |-- THIS IS SLOPPA'd --|
-# +----------------------+
+# [clanker] rewrite.
 # Original user prompt: can you look at the git-cans script and modify it so it detects all the commits that ive made previously and also sign them if they are unsigned but it should cut off at the last signed commit i made. if its not clear what im asking for you should ask.
+# Original: `${pkgs.git}/bin/git commit --amend --no-edit -S`
 
 set -euo pipefail
 

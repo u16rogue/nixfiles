@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 # THIS WAS REWRITTEN BY A CLANKER
-# Original: `${pkgs.git}/bin/git commit --amend --no-edit -S`
 
 FLAG_FAIL=0
 COUNT_SAME=0
