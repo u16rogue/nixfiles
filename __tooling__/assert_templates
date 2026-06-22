@@ -173,25 +173,44 @@ compare_lockfile() {
     fi
 }
 
+collect_template_paths() {
+    local relative_path="$1"
+    local -n output_paths="$2"
+    local template_dir=
+
+    output_paths=()
+
+    while IFS= read -r -d '' template_dir; do
+        output_paths+=("$template_dir/$relative_path")
+    done < <(find "$PROJECT_DIR/templates" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+
+    if [[ "${#output_paths[@]}" -eq 0 ]]; then
+        echo "[err] no template directories found under $PROJECT_DIR/templates." >&2
+        FLAG_FAIL=1
+    fi
+}
+
+TEMPLATE_PATHS=()
+
+collect_template_paths ".devshellshook.sh" TEMPLATE_PATHS
 compare_diff \
     "$PROJECT_DIR/.devshellshook.sh" \
-    "$PROJECT_DIR/templates/dev/.devshellshook.sh" \
-    "$PROJECT_DIR/templates/dev-cpp/.devshellshook.sh"
+    "${TEMPLATE_PATHS[@]}"
 
+collect_template_paths ".devshellspkgs.ls" TEMPLATE_PATHS
 compare_diff \
     "$PROJECT_DIR/.devshellspkgs.ls" \
-    "$PROJECT_DIR/templates/dev/.devshellspkgs.ls" \
-    "$PROJECT_DIR/templates/dev-cpp/.devshellspkgs.ls"
+    "${TEMPLATE_PATHS[@]}"
 
+collect_template_paths ".zellij.kdl" TEMPLATE_PATHS
 compare_diff \
     "$PROJECT_DIR/.zellij.kdl" \
-    "$PROJECT_DIR/templates/dev/.zellij.kdl" \
-    "$PROJECT_DIR/templates/dev-cpp/.zellij.kdl"
+    "${TEMPLATE_PATHS[@]}"
 
+collect_template_paths "flake.lock" TEMPLATE_PATHS
 compare_lockfile \
     "$PROJECT_DIR/flake.lock" \
-    "$PROJECT_DIR/templates/dev/flake.lock" \
-    "$PROJECT_DIR/templates/dev-cpp/flake.lock"
+    "${TEMPLATE_PATHS[@]}"
 
 echo "[info] final result: $COUNT_SAME same, $COUNT_DIFF different"
 

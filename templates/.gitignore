@@ -6,3 +6,5 @@
 !dev/**
 !dev-cpp/
 !dev-cpp/**
+!devenv/
+!devenv/**
