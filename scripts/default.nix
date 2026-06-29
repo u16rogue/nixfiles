@@ -1,7 +1,7 @@
 { pkgs, ... }: [
     (import ./mkignore/package.nix { inherit pkgs; })
     (import ./nix-develop/package.nix { inherit pkgs; })
-    (import ./nix-develop-sync/package.nix { inherit pkgs; })
+    (import ./nix-sync-lock-from-nixos/package.nix { inherit pkgs; })
     (import ./nix-pkgvercmp/package.nix { inherit pkgs; })
     (import ./tmuxss/package.nix { inherit pkgs; })
     (import ./git-cans/package.nix { inherit pkgs; })

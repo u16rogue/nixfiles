@@ -1,9 +1,9 @@
 { pkgs, ... }: pkgs.writeShellApplication {
-    name = "nix-develop-sync";
+    name = "nix-sync-lock-from-nixos";
     runtimeInputs = [
         pkgs.coreutils
         pkgs.jq
         pkgs.nix
     ];
-    text = builtins.readFile ./nix-develop-sync;
+    text = builtins.readFile ./nix-sync-lock-from-nixos;
 }

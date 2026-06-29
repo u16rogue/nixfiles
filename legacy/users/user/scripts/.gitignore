@@ -6,8 +6,8 @@
 !mkignore/**
 !nix-develop/
 !nix-develop/**
-!nix-develop-sync/
-!nix-develop-sync/**
+!nix-sync-lock-from-nixos/
+!nix-sync-lock-from-nixos/**
 !nix-pkgvercmp/
 !nix-pkgvercmp/**
 !tmuxss/

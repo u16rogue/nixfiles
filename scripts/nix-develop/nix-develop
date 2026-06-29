@@ -7,10 +7,10 @@ fi
 
 if command -v nix-pkgvercmp &> /dev/null; then
     if ! nix-pkgvercmp; then
-        if command -v nix-develop-sync &> /dev/null; then
+        if command -v nix-sync-lock-from-nixos &> /dev/null; then
             read -rp "[warn] nix revision versions are mismatched. sync now? [y/*]: " answer
             if [[ "$answer" == "y" ]]; then
-                nix-develop-sync || exit 1
+                nix-sync-lock-from-nixos || exit 1
             else
                 read -rp "[warn] continue without syncing? [y/*]: " answer
                 [[ "$answer" != "y" ]] && exit 1
