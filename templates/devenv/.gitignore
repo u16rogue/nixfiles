@@ -1,10 +1,13 @@
-# Devenv
-.devenv*
-devenv.local.nix
-devenv.local.yaml
-
-# direnv
-.direnv
-
-# pre-commit
-.pre-commit-config.yaml
+**
+.*
+!.gitignore
+!.devshellshook.sh
+!.devshellspkgs.ls
+!.zellij.kdl
+!devenv.lock
+!devenv.nix
+!devenv.yaml
+!flake.lock
+!flake.nix
+!nix/
+!tooling/

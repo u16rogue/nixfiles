@@ -7,7 +7,8 @@
 !flake.lock
 !flake.nix
 !hosts/
-!packs/
+!legacy/
+!overlays/
 !scripts/
 !templates/
 !__tooling__/

@@ -101,7 +101,6 @@ BWRAP_ARGS=( \
 
 # --- NO `--bind` BEYOND THIS POINT ---
 
-# ====================================================================================================
 # Setup env
 BWRAP_ARGS+=( \
     --setenv USER "$USER" \
@@ -114,44 +113,15 @@ BWRAP_ARGS+=( \
         " \
 )
 
-# ====================================================================================================
 # Setup fs
 BWRAP_ARGS+=( \
-    --dev /dev                      \
-    --proc /proc                    \
-    --tmpfs /tmp                    \
-    --ro-bind /lib64 /lib64         \
-    --ro-bind /nix /nix             \
+    --dev /dev              \
+    --proc /proc            \
+    --tmpfs /tmp            \
+    --ro-bind /lib64 /lib64 \
+    --ro-bind /nix /nix     \
 )
 
-# ====================================================================================================
-# Setup optional packages
-EXTRA_PACKAGES=()
-if [[ -f "$PWD/.devshellspkgs.ls" ]]; then
-    while IFS= read -r package; do
-        [[ "$package" =~ ^[[:space:]]*# ]] && continue
-
-        if [[ "$package" =~ ^[[:space:]]*- ]]; then
-            echo "[error] optional package cannot start with '-': '$package'" >&2
-            exit 1
-        fi
-
-        if [[ "$package" =~ [^[:space:]] ]]; then
-            EXTRA_PACKAGES+=("$package")
-        fi
-    done < "$PWD/.devshellspkgs.ls"
-fi
-
-if [[ ${#EXTRA_PACKAGES[@]} -gt 0 ]]; then
-    if ! OPTIONAL_PATH="$(nix --extra-experimental-features "flakes" --extra-experimental-features "nix-command" shell --inputs-from . "${EXTRA_PACKAGES[@]}" --command /bin/sh -c 'printf "%s" "$PATH"')"; then
-        echo "[error] failed to setup optional packages" >&2
-        exit 1
-    fi
-
-    PATH="$OPTIONAL_PATH"
-fi
-
-# ====================================================================================================
 # Setup PATH
 BWRAP_ARGS+=( \
     --setenv PATH "$PATH"                             \
@@ -161,12 +131,11 @@ BWRAP_ARGS+=( \
 
 IFS=':' read -ra host_paths <<< "$PATH"
 for host_path in "${host_paths[@]}"; do
-    if [[ -e "$host_path" && "$host_path" != "$PWD"/* && "$host_path" != /nix/* ]]; then
+    if [[ -e "$host_path" && "$host_path" != "$PWD"/* ]]; then
         BWRAP_ARGS+=(--ro-bind "$host_path" "$host_path")
     fi
 done
 
-# ====================================================================================================
 # Setup network
 BWRAP_ARGS+=( \
     --share-net                                 \
@@ -175,7 +144,6 @@ BWRAP_ARGS+=( \
     --ro-bind /etc/static/ssl /etc/static/ssl   \
 )
 
-# ====================================================================================================
 # Setup user
 NOLOGIN="$(realpath "$(which "nologin")")"
 if [[ ! -f "$NOLOGIN" ]]; then
@@ -197,7 +165,6 @@ if [[ ! -e "$EMU_GROUP" ]]; then
 fi
 BWRAP_ARGS+=(--ro-bind "$EMU_GROUP" /etc/group)
 
-# ====================================================================================================
 # Setup devshell and ensure it cant be changed inside the sandbox
 BWRAP_ARGS+=( \
     --ro-bind "$PWD/flake.nix" "$PWD/flake.nix"                 \
@@ -207,7 +174,6 @@ BWRAP_ARGS+=( \
     --ro-bind "$PWD/.zellij.kdl" "$PWD/.zellij.kdl" \
 )
 
-# ====================================================================================================
 # Setup development and nix env's
 while IFS='=' read -r key value; do
     case "$key" in
@@ -221,7 +187,6 @@ BWRAP_ARGS+=( \
     --setenv CPM_SOURCE_CACHE "${CPM_SOURCE_CACHE:-"$HOME/.cache/cmake-cpm"}" \
 )
 
-# ====================================================================================================
 # opt auto setup fish shell
 if command -v fish &> /dev/null; then
     BWRAP_ARGS+=(--setenv SHELL "$(which fish)")
@@ -229,7 +194,6 @@ if command -v fish &> /dev/null; then
     [[ -e "$FISH_CONFIG_PATH" ]] && BWRAP_ARGS+=(--ro-bind "$FISH_CONFIG_PATH" "$FISH_CONFIG_PATH")
 fi
 
-# ====================================================================================================
 # opt auto setup zellij
 if command -v zellij &> /dev/null; then
     PROGRAM="$(which zellij)"
@@ -253,6 +217,23 @@ fi
 # ====================================================================================================
 
 BWRAP_ARGS+=("--")
+
+EXTRA_PACKAGES=()
+if [[ -f "$PWD/.devshellspkgs.ls" ]]; then
+    while IFS= read -r package; do
+        [[ "$package" =~ ^[[:space:]]*# ]] && continue
+
+        if [[ "$package" =~ [^[:space:]] ]]; then
+            EXTRA_PACKAGES+=("$package")
+        fi
+    done < "$PWD/.devshellspkgs.ls"
+fi
+
+if [[ ${#EXTRA_PACKAGES[@]} -gt 0 ]]; then
+    BWRAP_ARGS+=( \
+        nix --extra-experimental-features "flakes" --extra-experimental-features "nix-command" shell --inputs-from . "${EXTRA_PACKAGES[@]}" --command \
+    )
+fi
 
 BWRAP_ARGS+=( \
     "$PROGRAM" \
