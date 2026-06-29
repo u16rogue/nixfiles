@@ -4,10 +4,5 @@
 !.devshellshook.sh
 !.devshellspkgs.ls
 !.zellij.kdl
-!devenv.lock
-!devenv.nix
-!devenv.yaml
 !flake.lock
 !flake.nix
-!nix/
-!tooling/
